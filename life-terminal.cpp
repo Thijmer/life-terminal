@@ -379,11 +379,11 @@ int main(int argc, char *argv[]) {
                 return 0;
                 break;
             case 'a':
-                printf("This is a conways game of life program for in the commandline. It is written in C++ and ncurses is used to display the board. This project is open source and licensed GPL3. My github: https://github.com/Thijmer/\n");
+                printf("This is a Conway's game of life program for in the commandline. It is written in C++ and ncurses is used to display the board. This project is open source and licensed GPL3. Github page: https://github.com/Thijmer/life-terminal\n");
                 return 0;
                 break;
             case 'h':
-                printf("Conways game of life is a game invented by the mathematician John Conway.\n The rules are simple. The screen is a grid, and each square (in this case letter) represents a cell. A cell can be dead or alive. An alive cell can only stay alive if there are two or three alive cells around it. If there are too few neighbours, the cell dies because of underpopulation. If there are too many neighbours, it dies because of overpopulation. A dead cell becomes alife (=born) if it has three neighbours.\nIn this implementation, alive cells are represented as 'O's and dead cells are just empty space.\n");
+                printf("Conway's game of life is a game invented by the mathematician John Conway.\n The rules are simple. The screen is a grid, and each square (in this case letter) represents a cell. A cell can be dead or alive. An alive cell can only stay alive if there are two or three alive cells around it. If there are too few neighbours, the cell dies because of underpopulation. If there are too many neighbours, it dies because of overpopulation. A dead cell becomes alife (=born) if it has three neighbours.\nIn this implementation, alive cells are represented as 'O's and dead cells are just empty space.\n");
                 printf("\n\e[1mControls\e[0m\n");
                 printf("You can move your cursor by pressing the arrow keys.\n");
                 printf("You can make a dead cell alive or a living cell dead by pressing 'X' or enter on your keyboard.\n");
