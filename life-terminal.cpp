@@ -6,7 +6,15 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <cstring>
+#include <filesystem>
 
+#ifndef CTRL //Key+control function. c = key.
+#define CTRL(c) ((c) & 037)
+#endif
+
+#define MAX_PATH_LENGTH 256 //Define max path length. 256 should be fine.
+#define BRIGHT_WHITE 15 //Define the bright white color used in the inverted palette.
+#define INVERTED 1 //Define inverted color pair index
 
 bool is_number(char string[], char length = -1) { //If length is not specified, this function needs a null-terminated string.
     if (length == -1) {length = 100;}
@@ -31,6 +39,95 @@ bool is_number(char string[], char length = -1) { //If length is not specified, 
     return true;
 
 }
+
+class FileWindow {
+    public:
+        //char path[MAX_PATH_LENGTH];
+        std::string path;
+        int *win_width;
+        int *win_height;
+        FileWindow(int *_win_width, int *_win_height, std::string _message) {
+            win_width = _win_width;
+            win_height = _win_height;
+            filewin = newwin(3, (*win_width)-1, (*win_height)-3, 0);
+            wbkgdset(filewin, 'P'); //Fixing the weird characters I got in my terminal emulator.
+            wbkgd(filewin, COLOR_PAIR(INVERTED));
+            //char c_str_path[MAX_PATH_LENGTH];
+            //getcwd(c_str_path, MAX_PATH_LENGTH); //Get current working directory
+            //path = c_str_path;
+            path_length = path.length();
+            path_index = path_length;
+            message = _message;
+            draw();
+        }
+        std::string get_input() {
+            struct timespec wait_time, wait_time2;
+            wait_time.tv_nsec = 2000000L;
+            while (true) {
+                int key = getch();
+                if (key == KEY_ENTER || key == int('\n')) {
+                    break;
+                } else if (key == CTRL('c') || key == 27) {
+                    destroy();
+                    return "";
+                } else if (key == KEY_LEFT) {
+                    path_index --;
+                } else if (key == KEY_RIGHT) {
+                    path_index ++;
+                } else if (key == KEY_BACKSPACE || key == 127) {
+                    if (path_index > 0) {
+                        path.erase(path.begin()+path_index-1);
+                        path_index --;
+                        path_length --;
+                    }
+                } else if (key == KEY_DC) {
+                    if (path_index < path_length) {
+                        path.erase(path.begin()+path_index);
+                        path_length --;
+                    }
+                } else if (key == KEY_STAB || key == '\t') {
+                    // No autocompletion (yet). (Maybe coming soon..?)
+                } else if (isascii(key)) {
+                    path.insert(path_index, 1, (char)key);
+                    path_length ++;
+                    path_index ++;
+                }
+                if (path_index < 0) {
+                        path_index = 0;
+                }
+                if (path_index > path_length) {
+                        path_index = path_length;
+                }
+                draw();
+                nanosleep(&wait_time, &wait_time2);
+            }
+            destroy();
+            return path; //Return text
+        }
+    private:
+        int path_index;
+        int path_length;
+        std::string message;
+        WINDOW *filewin;
+        void draw() {
+            werase(filewin);
+            wmove(filewin, 0, 0);
+            wprintw(filewin, message.c_str());
+            wmove(filewin, 1, 0);
+            wprintw(filewin, path.c_str());
+            wmove(filewin, 1, path_index);
+            wrefresh(filewin);
+        }
+        void destroy() {
+            //Remove window
+            wbkgd(filewin, COLOR_PAIR(0));
+            wclear(filewin);
+            wrefresh(filewin);
+            delwin(filewin);
+        }
+};
+
+
 
 class Tile {
     public:
@@ -176,13 +273,6 @@ class Board {
         int offset_y = 0;
         int win_width = 20;
         int win_height = 20;
-        struct UpdateSpeed {
-            int tile_update_counter = 0;
-            int tile_update_waittick = 250;
-            long *tick_sleeptime;
-            long std_sleeptime = 1000000L;
-        };
-        UpdateSpeed update_speed;
         std::vector<Tile*> updatelist;
         std::vector<std::vector<Tile>> tiles;
         Board(WINDOW *_scr, int width_inp, int height_inp) {
@@ -220,6 +310,13 @@ class Board {
     private:
         int cursor_x = 0;
         int cursor_y = 0;
+        struct UpdateSpeed {
+            int tile_update_counter = 0;
+            int tile_update_waittick = 250;
+            long *tick_sleeptime;
+            long std_sleeptime = 1000000L;
+        };
+        UpdateSpeed update_speed;
         WINDOW *scr;
         void draw() {
             wrefresh(scr);
@@ -309,7 +406,11 @@ class Board {
                 } else {
                     update_speed.tile_update_waittick *= 2;
                 }
-
+            } else if (key == CTRL('c') || key == CTRL('C')) {
+                running = false;
+            } else if (key == CTRL('o') || key == CTRL('O')) {
+                FileWindow filewin(&win_width, &win_height, "What is the name of the file you want to open?");
+                filewin.get_input();
             }
         }
 
@@ -332,7 +433,6 @@ class Board {
             wait_time.tv_nsec = 1000000L;
             update_speed.tick_sleeptime = &wait_time.tv_nsec;
             getmaxyx(scr, win_height, win_width);
-            set_cursor(width/2, height/2);
             while (running) {
                 int old_winheight = win_height;
                 int old_winwidth = win_width;
@@ -447,6 +547,14 @@ int main(int argc, char *argv[]) {
 
 	initscr(); // Start curses mode
     raw();
+    start_color(); //Color stuff
+    use_default_colors();
+    if (COLORS >= 16) {
+        init_color(BRIGHT_WHITE, 1000,1000,1000);
+        init_pair(INVERTED, COLOR_BLACK, BRIGHT_WHITE);
+    } else {
+        init_pair(INVERTED, COLOR_BLACK, COLOR_WHITE);
+    }
     Board board(stdscr, playingfield_width, playingfield_height); // Make the board.
     board.TakeControl(); // Let the board take control of the screen.
 	endwin(); // End curses mode
